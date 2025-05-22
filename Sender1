@@ -1,0 +1,476 @@
+#include <esp_now.h>
+#include <WiFi.h>
+#include <esp_wifi.h>
+#include <Wire.h>
+#include <driver/adc.h>
+#include <esp_adc_cal.h>
+
+// ====== MAC ADDRESS OF RECEIVER (ESP32-WROOM) ======
+uint8_t receiverAddress[] = {0x88, 0x13, 0xBF, 0x24, 0xAC, 0x6C};
+
+// ====== SECURITY KEYS ======
+const uint8_t PMK_KEY[16] = {'p', 'm', 'k', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2', '3'};
+const uint8_t LMK_KEY[16] = {'l', 'm', 'k', '_', 'n', 'o', 'd', 'e', '1', '_', '1', '2', '3', '4', '5', '6'}; // LMK for Node 1
+
+// ====== TDMA CONFIG ======
+#define NODE_ID 1 // Node 1
+#define TDMA_THRESHOLD 6 // Enable TDMA for 6+ nodes
+#define CYCLE_DURATION 15000 // 15 seconds
+#define SLOT_DURATION 5000   // 5 seconds per slot
+#define SLOT_OFFSET ((NODE_ID - 1) * SLOT_DURATION) // Slot start time
+#define GUARD_TIME 100 // 100 ms guard time
+#define CSMA_INTERVAL 30000 // Original 30-second interval
+
+// ====== LED PINS ======
+#define RED_LED_PIN 21
+#define GREEN_LED_PIN 1
+
+// ====== MPU6050 I2C ADDRESS AND REGISTERS ======
+#define MPU6050_ADDR 0x68
+#define MPU6050_PWR_MGMT_1 0x6B
+#define MPU6050_ACCEL_CONFIG 0x1C
+#define MPU6050_GYRO_CONFIG 0x1B
+#define MPU6050_CONFIG 0x1A
+#define MPU6050_ACCEL_XOUT_H 0x3B
+#define MPU6050_GYRO_XOUT_H 0x43
+
+// ====== ADC CONFIG ======
+#define ADC_CHANNEL ADC1_CHANNEL_0 // GPIO0
+#define ADC_ATTEN ADC_ATTEN_DB_11 // 0-2500mV range
+#define ADC_WIDTH ADC_WIDTH_BIT_12 // 12-bit resolution
+#define ADC_SAMPLES 10 // Number of ADC samples
+#define VOLTAGE_DIVIDER_RATIO 2.0 // 100k/100k divider
+esp_adc_cal_characteristics_t adc_chars;
+
+// ====== VOLTAGE TO PERCENTAGE TABLE ======
+const float voltageTable[] = {4.20, 4.10, 4.00, 3.90, 3.85, 3.80, 3.75, 3.70, 3.60, 3.50, 3.40, 3.30, 3.20};
+const float percentageTable[] = {100.0, 92.5, 85.0, 75.0, 65.0, 55.0, 45.0, 35.0, 25.0, 20.0, 15.0, 7.5, 2.5};
+const int TABLE_SIZE = sizeof(voltageTable) / sizeof(voltageTable[0]);
+
+// ====== DATA STRUCTURE FOR ESP-NOW ======
+#define NUM_SAMPLES 6
+typedef struct struct_message {
+  char a[32];
+  float roll[NUM_SAMPLES];
+  float pitch[NUM_SAMPLES];
+  bool reset;
+  float battery_percentage;
+} struct_message;
+
+typedef struct sync_message {
+  uint32_t timestamp;
+  uint32_t cycle_start;
+  uint8_t num_nodes;
+} sync_message;
+
+struct_message myData;
+struct_message lastSentData;
+struct_message incomingData;
+sync_message syncMsg;
+
+// ====== TIMERS AND CONTROL ======
+#define BATTERY_READ_INTERVAL 300000 // 5 minutes
+#define BLINK_ON_TIME 2000 // 2s on
+#define BLINK_OFF_TIME 6000 // 6s off
+int retryCount = 0;
+bool waitingToSend = false;
+unsigned long lastBlinkTime = 0;
+unsigned long lastBatteryReadTime = 0;
+unsigned long lastSendTime = 0;
+unsigned long cycleStartTime = 0;
+bool synchronized = false;
+bool useTDMA = false;
+uint8_t numNodes = 0;
+bool ledOn = false;
+float latestBatteryPercentage = 0.0;
+
+// ====== MPU6050 DATA ======
+float RateRoll, RatePitch, RateYaw;
+float AccX, AccY, AccZ;
+float AngleRoll, AnglePitch;
+float RateCalibrationRoll, RateCalibrationPitch, RateCalibrationYaw;
+float OffsetRoll, OffsetPitch;
+float KalmanAngleRoll[NUM_SAMPLES], KalmanUncertaintyAngleRoll[NUM_SAMPLES];
+float KalmanAnglePitch[NUM_SAMPLES], KalmanUncertaintyAnglePitch[NUM_SAMPLES];
+float Kalman1DOutput[] = {0, 0};
+#define SAMPLE_COUNT 30
+#define MOVING_AVG_WINDOW 5
+float rollBuffer[SAMPLE_COUNT], pitchBuffer[SAMPLE_COUNT];
+
+// ====== BATTERY VOLTAGE TO PERCENTAGE ======
+float voltage_to_percentage(float voltage) {
+  if (voltage >= voltageTable[0]) return percentageTable[0];
+  if (voltage <= voltageTable[TABLE_SIZE - 1]) return percentageTable[TABLE_SIZE - 1];
+  for (int i = 0; i < TABLE_SIZE - 1; i++) {
+    if (voltage <= voltageTable[i] && voltage > voltageTable[i + 1]) {
+      float v1 = voltageTable[i], v2 = voltageTable[i + 1];
+      float p1 = percentageTable[i], p2 = percentageTable[i + 1];
+      return p1 + (voltage - v1) * (p2 - p1) / (v2 - v1);
+    }
+  }
+  return 0.0;
+}
+
+// ====== KALMAN FILTER ======
+void kalman_1d(float &KalmanState, float &KalmanUncertainty, float KalmanInput, float KalmanMeasurement) {
+  const float dt = 0.004;
+  KalmanState += dt * KalmanInput;
+  KalmanUncertainty += dt * dt * 3.5 * 3.5;
+  float KalmanGain = KalmanUncertainty / (KalmanUncertainty + 0.35 * 0.35);
+  KalmanState += KalmanGain * (KalmanMeasurement - KalmanState);
+  KalmanUncertainty = (1 - KalmanGain) * KalmanUncertainty;
+  Kalman1DOutput[0] = KalmanState;
+  Kalman1DOutput[1] = KalmanUncertainty;
+}
+
+// ====== MOVING AVERAGE FILTER ======
+void moving_average(float *input, float *output, int inputSize, int windowSize, int outputSize) {
+  for (int i = 0; i < outputSize; i++) {
+    float sum = 0;
+    int startIndex = i * (inputSize / outputSize);
+    for (int j = 0; j < windowSize && (startIndex + j) < inputSize; j++) {
+      sum += input[startIndex + j];
+    }
+    output[i] = sum / min(windowSize, inputSize - startIndex);
+  }
+}
+
+// ====== MPU6050 REGISTER READ/WRITE ======
+void writeMPURegister(uint8_t reg, uint8_t value) {
+  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.write(reg);
+  Wire.write(value);
+  Wire.endTransmission();
+}
+
+int16_t readMPURegisterPair(uint8_t reg) {
+  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.write(reg);
+  Wire.endTransmission(false);
+  Wire.requestFrom(MPU6050_ADDR, 2, true);
+  return (Wire.read() << 8) | Wire.read();
+}
+
+// ====== READ MPU6050 DATA ======
+void read_mpu6050_data() {
+  AccX = (float)readMPURegisterPair(MPU6050_ACCEL_XOUT_H) / 16384.0;
+  AccY = (float)readMPURegisterPair(MPU6050_ACCEL_XOUT_H + 2) / 16384.0;
+  AccZ = (float)readMPURegisterPair(MPU6050_ACCEL_XOUT_H + 4) / 16384.0;
+  RateRoll = (float)readMPURegisterPair(MPU6050_GYRO_XOUT_H) / 131.0 * 57.2958;
+  RatePitch = (float)readMPURegisterPair(MPU6050_GYRO_XOUT_H + 2) / 131.0 * 57.2958;
+  RateYaw = (float)readMPURegisterPair(MPU6050_GYRO_XOUT_H + 4) / 131.0 * 57.2958;
+  AngleRoll = atan2(AccY, sqrt(AccX * AccX + AccZ * AccZ)) * 180 / PI;
+  AnglePitch = -atan2(AccX, sqrt(AccY * AccY + AccZ * AccZ)) * 180 / PI;
+}
+
+// ====== CALIBRATE MPU6050 ======
+void calibrate_mpu6050() {
+  Serial.println("Calibrating MPU6050 for 2 seconds...");
+  RateCalibrationRoll = 0;
+  RateCalibrationPitch = 0;
+  RateCalibrationYaw = 0;
+  OffsetRoll = 0;
+  OffsetPitch = 0;
+  int samples = 0;
+  uint32_t startTime = millis();
+  while (millis() - startTime < 2000) {
+    read_mpu6050_data();
+    RateCalibrationRoll += RateRoll;
+    RateCalibrationPitch += RatePitch;
+    RateCalibrationYaw += RateYaw;
+    OffsetRoll += AngleRoll;
+    OffsetPitch += AnglePitch;
+    samples++;
+    delayMicroseconds(100);
+  }
+  RateCalibrationRoll /= samples;
+  RateCalibrationPitch /= samples;
+  RateCalibrationYaw /= samples;
+  OffsetRoll /= samples;
+  OffsetPitch /= samples;
+  Serial.println("Calibration Done.");
+}
+
+// ====== READ BATTERY VOLTAGE ======
+float read_battery_voltage() {
+  uint64_t adc_reading = 0;
+  for (int i = 0; i < ADC_SAMPLES; i++) {
+    uint32_t raw = adc1_get_raw(ADC_CHANNEL);
+    if (raw >= 0 && raw <= 4095) {
+      adc_reading += raw;
+    }
+    delay(1);
+  }
+  adc_reading /= ADC_SAMPLES;
+  uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, &adc_chars);
+  return (voltage * VOLTAGE_DIVIDER_RATIO) / 1000.0;
+}
+
+// ====== SEND DATA ======
+void sendData() {
+  writeMPURegister(MPU6050_PWR_MGMT_1, 0x00);
+  delay(100);
+  esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
+
+  for (int i = 0; i < SAMPLE_COUNT; i++) {
+    read_mpu6050_data();
+    RateRoll -= RateCalibrationRoll;
+    RatePitch -= RateCalibrationPitch;
+    rollBuffer[i] = AngleRoll - OffsetRoll;
+    pitchBuffer[i] = AnglePitch - OffsetPitch;
+    delay(4);
+  }
+
+  float avgRoll[NUM_SAMPLES], avgPitch[NUM_SAMPLES];
+  moving_average(rollBuffer, avgRoll, SAMPLE_COUNT, MOVING_AVG_WINDOW, NUM_SAMPLES);
+  moving_average(pitchBuffer, avgPitch, SAMPLE_COUNT, MOVING_AVG_WINDOW, NUM_SAMPLES);
+
+  for (int i = 0; i < NUM_SAMPLES; i++) {
+    kalman_1d(KalmanAngleRoll[i], KalmanUncertaintyAngleRoll[i], RateRoll, avgRoll[i]);
+    myData.roll[i] = Kalman1DOutput[0];
+    kalman_1d(KalmanAnglePitch[i], KalmanUncertaintyAnglePitch[i], RatePitch, avgPitch[i]);
+    myData.pitch[i] = Kalman1DOutput[0];
+  }
+
+  strcpy(myData.a, "Node1");
+  myData.reset = false;
+  myData.battery_percentage = latestBatteryPercentage;
+
+  for (int i = 0; i < NUM_SAMPLES; i++) {
+    Serial.print("Roll["); Serial.print(i); Serial.print("]: "); Serial.println(myData.roll[i]);
+    Serial.print("Pitch["); Serial.print(i); Serial.print("]: "); Serial.println(myData.pitch[i]);
+  }
+  Serial.print("Battery Percentage: "); Serial.println(myData.battery_percentage);
+
+  memcpy(&lastSentData, &myData, sizeof(myData));
+  waitingToSend = true;
+  Serial.println("Attempting to send data to " + String(receiverAddress[0], HEX) + ":" +
+                 String(receiverAddress[1], HEX) + ":" + String(receiverAddress[2], HEX) + ":" +
+                 String(receiverAddress[3], HEX) + ":" + String(receiverAddress[4], HEX) + ":" +
+                 String(receiverAddress[5], HEX));
+  esp_err_t result = esp_now_send(receiverAddress, (uint8_t *)&myData, sizeof(myData));
+  Serial.print("Sending data (Result: ");
+  Serial.print(result == ESP_OK ? "OK" : "Error");
+  Serial.println(")");
+
+  writeMPURegister(MPU6050_PWR_MGMT_1, 0x40);
+  esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
+}
+
+// ====== ESP-NOW CALLBACKS ======
+void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+  Serial.print("Send Status to ");
+  for (int i = 0; i < 6; i++) {
+    Serial.printf("%02X", mac_addr[i]);
+    if (i < 5) Serial.print(":");
+  }
+  Serial.println(status == ESP_NOW_SEND_SUCCESS ? ": Success" : ": Fail");
+  if (status == ESP_NOW_SEND_SUCCESS) {
+    retryCount = 0;
+    waitingToSend = false;
+    if (!useTDMA) {
+      lastSendTime = millis(); // Update for CSMA mode
+    }
+  } else if (retryCount < 3 && waitingToSend) {
+    retryCount++;
+    esp_err_t result = esp_now_send(receiverAddress, (uint8_t *)&lastSentData, sizeof(lastSentData));
+    Serial.print("Retrying, attempt ");
+    Serial.print(retryCount);
+    Serial.print(" (Result: ");
+    Serial.print(result == ESP_OK ? "OK" : "Error");
+    Serial.println(")");
+  } else {
+    retryCount = 0;
+    waitingToSend = false;
+    Serial.println("Max retries reached, giving up");
+    if (!useTDMA) {
+      lastSendTime = millis(); // Update for CSMA mode
+    }
+  }
+}
+
+void OnDataRecv(const uint8_t *mac, const uint8_t *data, int len) {
+  if (len == sizeof(sync_message)) {
+    memcpy(&syncMsg, data, sizeof(syncMsg));
+    cycleStartTime = syncMsg.cycle_start + (millis() - syncMsg.timestamp);
+    numNodes = syncMsg.num_nodes;
+    useTDMA = (numNodes >= TDMA_THRESHOLD);
+    synchronized = true;
+    Serial.println("Received sync beacon, num_nodes: " + String(numNodes) + ", useTDMA: " + String(useTDMA));
+  } else if (len == sizeof(incomingData)) {
+    memcpy(&incomingData, data, sizeof(incomingData));
+    if (incomingData.reset) {
+      Serial.println("📥 Received RESET command");
+      strcpy(myData.a, "");
+      for (int i = 0; i < NUM_SAMPLES; i++) {
+        myData.roll[i] = 0;
+        myData.pitch[i] = 0;
+      }
+      myData.battery_percentage = 0;
+      myData.reset = false;
+      writeMPURegister(MPU6050_PWR_MGMT_1, 0x00);
+      delay(100);
+      calibrate_mpu6050();
+      if (useTDMA) {
+        cycleStartTime = millis() - SLOT_OFFSET; // Resync for TDMA
+      } else {
+        lastSendTime = millis(); // Reset for CSMA
+      }
+      synchronized = true;
+      writeMPURegister(MPU6050_PWR_MGMT_1, 0x40);
+      esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
+      Serial.println("MPU6050 recalibrated, timer reset, MPU and modem sleeping");
+    }
+  } else {
+    Serial.println("Invalid packet size received!");
+  }
+}
+
+// ====== SETUP ======
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+
+  setCpuFrequencyMhz(80);
+  Serial.print("CPU Frequency set to: ");
+  Serial.print(getCpuFrequencyMhz());
+  Serial.println(" MHz");
+
+  pinMode(RED_LED_PIN, OUTPUT);
+  pinMode(GREEN_LED_PIN, OUTPUT);
+  digitalWrite(RED_LED_PIN, HIGH);
+  digitalWrite(GREEN_LED_PIN, HIGH);
+
+  Wire.begin(2, 3, 400000);
+
+  writeMPURegister(MPU6050_PWR_MGMT_1, 0x00);
+  writeMPURegister(MPU6050_ACCEL_CONFIG, 0x00);
+  writeMPURegister(MPU6050_GYRO_CONFIG, 0x00);
+  writeMPURegister(MPU6050_CONFIG, 0x03);
+  delay(100);
+
+  esp_err_t ret = adc1_config_width(ADC_WIDTH);
+  if (ret != ESP_OK) {
+    Serial.println("Failed to configure ADC width!");
+    while (1);
+  }
+  ret = adc1_config_channel_atten(ADC_CHANNEL, ADC_ATTEN);
+  if (ret != ESP_OK) {
+    Serial.println("Failed to configure ADC channel!");
+    while (1);
+  }
+  esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN, ADC_WIDTH, 1100, &adc_chars);
+
+  calibrate_mpu6050();
+
+  for (int i = 0; i < NUM_SAMPLES; i++) {
+    KalmanAngleRoll[i] = 0;
+    KalmanUncertaintyAngleRoll[i] = 1 * 1;
+    KalmanAnglePitch[i] = 0;
+    KalmanUncertaintyAnglePitch[i] = 1 * 1;
+  }
+
+  for (int i = 0; i < SAMPLE_COUNT; i++) {
+    rollBuffer[i] = 0;
+    pitchBuffer[i] = 0;
+  }
+
+  btStop();
+
+  WiFi.mode(WIFI_STA);
+  esp_wifi_start();
+  WiFi.disconnect();
+
+  int channel = 1;
+  esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
+  Serial.print("Wi-Fi Channel: ");
+  Serial.println(channel);
+
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("Error initializing ESP-NOW");
+    while (1);
+  }
+  Serial.println("ESP-NOW initialized successfully");
+
+  // Set PMK for encryption
+  if (esp_now_set_pmk(PMK_KEY) != ESP_OK) {
+    Serial.println("Failed to set PMK");
+    while (1);
+  }
+
+  esp_now_register_send_cb(OnDataSent);
+  esp_now_register_recv_cb(OnDataRecv);
+
+  // Add receiver as peer with encryption
+  esp_now_peer_info_t peerInfo = {};
+  memcpy(peerInfo.peer_addr, receiverAddress, 6);
+  peerInfo.channel = channel;
+  peerInfo.encrypt = true;
+  memcpy(peerInfo.lmk, LMK_KEY, 16);
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    Serial.println("Failed to add peer");
+    while (1);
+  }
+  Serial.println("Peer added successfully with encryption");
+
+  writeMPURegister(MPU6050_PWR_MGMT_1, 0x40);
+  esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
+
+  float battery_voltage = read_battery_voltage();
+  latestBatteryPercentage = voltage_to_percentage(battery_voltage);
+  Serial.printf("Initial Battery Voltage: %.2f V, Percentage: %.1f%%\n", battery_voltage, latestBatteryPercentage);
+}
+
+// ====== LOOP ======
+void loop() {
+  unsigned long currentTime = millis();
+
+  // Update battery periodically
+  if (currentTime - lastBatteryReadTime >= BATTERY_READ_INTERVAL) {
+    float battery_voltage = read_battery_voltage();
+    latestBatteryPercentage = voltage_to_percentage(battery_voltage);
+    Serial.printf("Battery Voltage: %.2f V, Percentage: %.1f%%\n", battery_voltage, latestBatteryPercentage);
+    lastBatteryReadTime = currentTime;
+  }
+
+  // LED blinking
+  float battery_voltage = read_battery_voltage();
+  bool lowBattery = battery_voltage < 3.5;
+  if (currentTime - lastBlinkTime >= (ledOn ? BLINK_ON_TIME : BLINK_OFF_TIME)) {
+    ledOn = !ledOn;
+    if (ledOn) {
+      if (lowBattery) {
+        digitalWrite(RED_LED_PIN, LOW);
+        digitalWrite(GREEN_LED_PIN, HIGH);
+        Serial.println("Red LED ON (Low Battery)");
+      } else {
+        digitalWrite(RED_LED_PIN, HIGH);
+        digitalWrite(GREEN_LED_PIN, LOW);
+        Serial.println("Green LED ON");
+      }
+    } else {
+      digitalWrite(RED_LED_PIN, HIGH);
+      digitalWrite(GREEN_LED_PIN, HIGH);
+      Serial.println("LEDs OFF");
+    }
+    lastBlinkTime = currentTime;
+  }
+
+  // Send data based on mode
+  if (synchronized) {
+    if (useTDMA) {
+      // TDMA mode: Send in assigned slot
+      unsigned long cycleTime = (currentTime - cycleStartTime) % CYCLE_DURATION;
+      if (cycleTime >= SLOT_OFFSET && cycleTime < SLOT_OFFSET + SLOT_DURATION - GUARD_TIME && !waitingToSend) {
+        sendData();
+      }
+    } else {
+      // CSMA/CA mode: Send every 30 seconds
+      if (currentTime - lastSendTime >= CSMA_INTERVAL && !waitingToSend) {
+        sendData();
+      }
+    }
+  }
+
+  delay(10);
+}
