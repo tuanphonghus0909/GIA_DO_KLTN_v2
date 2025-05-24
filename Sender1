@@ -418,7 +418,9 @@ void setup() {
 
   float battery_voltage = read_battery_voltage();
   latestBatteryPercentage = voltage_to_percentage(battery_voltage);
-  Serial.printf("Initial Battery Voltage: %.2f V, Percentage: %.1f%%\n", battery_voltage, latestBatteryPercentage);
+  //Serial.printf("Initial Battery Voltage: %.2f V, Percentage: %.1f%%\n", battery_voltage, latestBatteryPercentage);
+  synchronized = true;
+  lastSendTime = millis();
 }
 
 // ====== LOOP ======
