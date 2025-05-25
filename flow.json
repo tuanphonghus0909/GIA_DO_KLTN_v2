@@ -1,0 +1,901 @@
+[
+    {
+        "id": "df368d78799495ad",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "826ca9d914358bef",
+        "type": "ui-base",
+        "name": "My Dashboard",
+        "path": "/dashboard",
+        "appIcon": "",
+        "includeClientData": true,
+        "acceptsClientConfig": [
+            "ui-notification",
+            "ui-control"
+        ],
+        "showPathInSidebar": false,
+        "headerContent": "page",
+        "navigationStyle": "default",
+        "titleBarStyle": "default",
+        "showReconnectNotification": true,
+        "notificationDisplayTime": 1,
+        "showDisconnectNotification": true
+    },
+    {
+        "id": "d8247428294c2116",
+        "type": "ui-theme",
+        "name": "Default Theme",
+        "colors": {
+            "surface": "#ffffff",
+            "primary": "#0094CE",
+            "bgPage": "#eeeeee",
+            "groupBg": "#ffffff",
+            "groupOutline": "#cccccc"
+        },
+        "sizes": {
+            "density": "default",
+            "pagePadding": "12px",
+            "groupGap": "12px",
+            "groupBorderRadius": "4px",
+            "widgetGap": "12px"
+        }
+    },
+    {
+        "id": "5d24aa44fb423637",
+        "type": "ui-page",
+        "name": "Monitor Rack Stability",
+        "ui": "826ca9d914358bef",
+        "path": "/page1",
+        "icon": "home",
+        "layout": "grid",
+        "theme": "d8247428294c2116",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": "0",
+                "cols": "3"
+            },
+            {
+                "name": "Tablet",
+                "px": "576",
+                "cols": "6"
+            },
+            {
+                "name": "Small Desktop",
+                "px": "768",
+                "cols": "9"
+            },
+            {
+                "name": "Desktop",
+                "px": "1024",
+                "cols": "12"
+            }
+        ],
+        "order": 1,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "a45a3fa2e13b5abd",
+        "type": "ui-group",
+        "name": "State",
+        "page": "5d24aa44fb423637",
+        "width": 6,
+        "height": 1,
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "e3c035664e0bc841",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "48a113f51f254502a6fc327abf6fe6a5.s1.eu.hivemq.cloud",
+        "port": "8883",
+        "tls": "",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": true,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "c9cdf71ad187b43d",
+        "type": "ui_group",
+        "name": "Default",
+        "tab": "",
+        "disp": true,
+        "width": 6,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "2333d9fd45d2e31a",
+        "type": "ui-theme",
+        "name": "Default Theme",
+        "colors": {
+            "surface": "#ffffff",
+            "primary": "#0094CE",
+            "bgPage": "#eeeeee",
+            "groupBg": "#ffffff",
+            "groupOutline": "#cccccc"
+        },
+        "sizes": {
+            "density": "default",
+            "pagePadding": "12px",
+            "groupGap": "12px",
+            "groupBorderRadius": "4px",
+            "widgetGap": "12px"
+        }
+    },
+    {
+        "id": "d5e06ff1dc4254f6",
+        "type": "ui-group",
+        "name": "Water Status",
+        "page": "",
+        "width": "12",
+        "height": "1",
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "be301f2676f3889b",
+        "type": "ui-group",
+        "name": "Ship Control",
+        "page": "",
+        "width": "12",
+        "height": "1",
+        "order": 2,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "a4cf6ebdc97abcc5",
+        "type": "ui-group",
+        "name": "Port Status",
+        "page": "",
+        "width": "12",
+        "height": "1",
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "f45098d63ed7fe2f",
+        "type": "ui-group",
+        "name": "Control In",
+        "page": "",
+        "width": "12",
+        "height": "1",
+        "order": 2,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "96db788ceab1ac9c",
+        "type": "ui-group",
+        "name": "Control Out",
+        "page": "",
+        "width": "12",
+        "height": "1",
+        "order": 3,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "6420410cf88b6aeb",
+        "type": "mqtt in",
+        "z": "df368d78799495ad",
+        "name": "",
+        "topic": "esp32/node1/pitch",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "e3c035664e0bc841",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 510,
+        "y": 260,
+        "wires": [
+            [
+                "db8d263990840520"
+            ]
+        ]
+    },
+    {
+        "id": "7855072ac34350d5",
+        "type": "mqtt in",
+        "z": "df368d78799495ad",
+        "name": "",
+        "topic": "esp32/node2/roll",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "e3c035664e0bc841",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 500,
+        "y": 440,
+        "wires": [
+            [
+                "dfa484acc0b97834"
+            ]
+        ]
+    },
+    {
+        "id": "fcd6536a10bdda42",
+        "type": "mqtt in",
+        "z": "df368d78799495ad",
+        "name": "",
+        "topic": "esp32/node3/pitch",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "e3c035664e0bc841",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 510,
+        "y": 540,
+        "wires": [
+            [
+                "5762a8fdeb90f864"
+            ]
+        ]
+    },
+    {
+        "id": "46090bc5eee21bf3",
+        "type": "mqtt in",
+        "z": "df368d78799495ad",
+        "name": "",
+        "topic": "esp32/node3/roll",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "e3c035664e0bc841",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 500,
+        "y": 700,
+        "wires": [
+            [
+                "a41911f71a20f094"
+            ]
+        ]
+    },
+    {
+        "id": "2d60579b40e01981",
+        "type": "ui-gauge",
+        "z": "df368d78799495ad",
+        "name": "Roll 1",
+        "group": "a45a3fa2e13b5abd",
+        "order": 5,
+        "width": 3,
+        "height": 3,
+        "gtype": "gauge-half",
+        "gstyle": "rounded",
+        "title": "Roll 1",
+        "units": "Degree",
+        "icon": "",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "-90",
+                "color": "#ff0000"
+            },
+            {
+                "from": "-10",
+                "color": "#ffff00"
+            },
+            {
+                "from": "-5",
+                "color": "#00ff00"
+            },
+            {
+                "from": "5",
+                "color": "#ffff00"
+            },
+            {
+                "from": "10",
+                "color": "#ff0000"
+            }
+        ],
+        "min": "-90",
+        "max": "90",
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": "20",
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 770,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "d2bad8f128eee0b9",
+        "type": "mqtt in",
+        "z": "df368d78799495ad",
+        "name": "",
+        "topic": "esp32/node1/roll",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "e3c035664e0bc841",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 500,
+        "y": 180,
+        "wires": [
+            [
+                "2d60579b40e01981"
+            ]
+        ]
+    },
+    {
+        "id": "5d773814cdf1105a",
+        "type": "mqtt in",
+        "z": "df368d78799495ad",
+        "name": "",
+        "topic": "esp32/node3/pitch",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "e3c035664e0bc841",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 510,
+        "y": 800,
+        "wires": [
+            [
+                "40233d8e96c3cc5b"
+            ]
+        ]
+    },
+    {
+        "id": "a41911f71a20f094",
+        "type": "ui-gauge",
+        "z": "df368d78799495ad",
+        "name": "Roll 3",
+        "group": "a45a3fa2e13b5abd",
+        "order": 9,
+        "width": 3,
+        "height": 3,
+        "gtype": "gauge-half",
+        "gstyle": "rounded",
+        "title": "Roll 3",
+        "units": "Degree",
+        "icon": "",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "-90",
+                "color": "#ff0000"
+            },
+            {
+                "from": "-20",
+                "color": "#ffff00"
+            },
+            {
+                "from": "-10",
+                "color": "#00ff00"
+            },
+            {
+                "from": "10",
+                "color": "#ffff00"
+            },
+            {
+                "from": "20",
+                "color": "#ff0000"
+            }
+        ],
+        "min": "-90",
+        "max": "90",
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": "20",
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 770,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "40233d8e96c3cc5b",
+        "type": "ui-gauge",
+        "z": "df368d78799495ad",
+        "name": "Pitch 3",
+        "group": "a45a3fa2e13b5abd",
+        "order": 10,
+        "width": 3,
+        "height": 3,
+        "gtype": "gauge-half",
+        "gstyle": "rounded",
+        "title": "Pitch 3",
+        "units": "Degree",
+        "icon": "",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "-90",
+                "color": "#ff0000"
+            },
+            {
+                "from": "-20",
+                "color": "#ffff00"
+            },
+            {
+                "from": "-10",
+                "color": "#00ff00"
+            },
+            {
+                "from": "10",
+                "color": "#ffff00"
+            },
+            {
+                "from": "20",
+                "color": "#ff0000"
+            }
+        ],
+        "min": "-90",
+        "max": "90",
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": "20",
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 770,
+        "y": 800,
+        "wires": []
+    },
+    {
+        "id": "db8d263990840520",
+        "type": "ui-gauge",
+        "z": "df368d78799495ad",
+        "name": "Pitch 1",
+        "group": "a45a3fa2e13b5abd",
+        "order": 6,
+        "width": 3,
+        "height": 3,
+        "gtype": "gauge-half",
+        "gstyle": "rounded",
+        "title": "Pitch 1",
+        "units": "Degree",
+        "icon": "",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "-90",
+                "color": "#ff0000"
+            },
+            {
+                "from": "-10",
+                "color": "#ffff00"
+            },
+            {
+                "from": "-5",
+                "color": "#00ff00"
+            },
+            {
+                "from": "5",
+                "color": "#ffff00"
+            },
+            {
+                "from": "10",
+                "color": "#ff0000"
+            }
+        ],
+        "min": "-90",
+        "max": "90",
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": "20",
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 770,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "dfa484acc0b97834",
+        "type": "ui-gauge",
+        "z": "df368d78799495ad",
+        "name": "Roll 2",
+        "group": "a45a3fa2e13b5abd",
+        "order": 7,
+        "width": 3,
+        "height": 3,
+        "gtype": "gauge-half",
+        "gstyle": "rounded",
+        "title": "Roll 2",
+        "units": "Degree",
+        "icon": "",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "-90",
+                "color": "#ff0000"
+            },
+            {
+                "from": "-10",
+                "color": "#ffff00"
+            },
+            {
+                "from": "-5",
+                "color": "#00ff00"
+            },
+            {
+                "from": "5",
+                "color": "#ffff00"
+            },
+            {
+                "from": "10",
+                "color": "#ff0000"
+            }
+        ],
+        "min": "-90",
+        "max": "90",
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": "20",
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 770,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "5762a8fdeb90f864",
+        "type": "ui-gauge",
+        "z": "df368d78799495ad",
+        "name": "Pitch 2",
+        "group": "a45a3fa2e13b5abd",
+        "order": 8,
+        "width": 3,
+        "height": 3,
+        "gtype": "gauge-half",
+        "gstyle": "rounded",
+        "title": "Pitch 2",
+        "units": "Degree",
+        "icon": "",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "-90",
+                "color": "#ff0000"
+            },
+            {
+                "from": "-10",
+                "color": "#ffff00"
+            },
+            {
+                "from": "-5",
+                "color": "#00ff00"
+            },
+            {
+                "from": "5",
+                "color": "#ffff00"
+            },
+            {
+                "from": "10",
+                "color": "#ff0000"
+            }
+        ],
+        "min": "-90",
+        "max": "90",
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": "20",
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 770,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "fc3e281a88b6078e",
+        "type": "mqtt out",
+        "z": "df368d78799495ad",
+        "name": "RESET",
+        "topic": "esp32/reset",
+        "qos": "0",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "e3c035664e0bc841",
+        "x": 760,
+        "y": 940,
+        "wires": []
+    },
+    {
+        "id": "960427a334efa669",
+        "type": "ui-button",
+        "z": "df368d78799495ad",
+        "group": "a45a3fa2e13b5abd",
+        "name": "RESET",
+        "label": "RESET",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "emulateClick": false,
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "history",
+        "iconPosition": "left",
+        "payload": "RESET",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "buttonColor": "red",
+        "textColor": "white",
+        "iconColor": "white",
+        "enableClick": true,
+        "enablePointerdown": false,
+        "pointerdownPayload": "",
+        "pointerdownPayloadType": "str",
+        "enablePointerup": false,
+        "pointerupPayload": "",
+        "pointerupPayloadType": "str",
+        "x": 480,
+        "y": 940,
+        "wires": [
+            [
+                "fc3e281a88b6078e"
+            ]
+        ]
+    },
+    {
+        "id": "61b3eb2c1c0306ae",
+        "type": "mqtt in",
+        "z": "df368d78799495ad",
+        "name": "",
+        "topic": "esp32/node1/battery",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "e3c035664e0bc841",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 510,
+        "y": 340,
+        "wires": [
+            [
+                "42c403baafa28fae"
+            ]
+        ]
+    },
+    {
+        "id": "200179870d6a58d6",
+        "type": "mqtt in",
+        "z": "df368d78799495ad",
+        "name": "",
+        "topic": "esp32/node2/battery",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "e3c035664e0bc841",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 510,
+        "y": 620,
+        "wires": [
+            [
+                "074b7c680251a57e"
+            ]
+        ]
+    },
+    {
+        "id": "b973918059bb65bb",
+        "type": "mqtt in",
+        "z": "df368d78799495ad",
+        "name": "",
+        "topic": "esp32/node3/battery",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "e3c035664e0bc841",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 510,
+        "y": 880,
+        "wires": [
+            [
+                "040618d62b1f987f"
+            ]
+        ]
+    },
+    {
+        "id": "42c403baafa28fae",
+        "type": "ui-gauge",
+        "z": "df368d78799495ad",
+        "name": "BATT",
+        "group": "a45a3fa2e13b5abd",
+        "order": 1,
+        "width": 3,
+        "height": 3,
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "Bat1",
+        "units": "%",
+        "icon": "",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "0",
+                "color": "#ea5353"
+            },
+            {
+                "from": "30",
+                "color": "#ffc800"
+            },
+            {
+                "from": "70",
+                "color": "#5cd65c"
+            }
+        ],
+        "min": 0,
+        "max": "100",
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": 8,
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 770,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "074b7c680251a57e",
+        "type": "ui-gauge",
+        "z": "df368d78799495ad",
+        "name": "BATT2",
+        "group": "a45a3fa2e13b5abd",
+        "order": 3,
+        "width": 3,
+        "height": 3,
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "Bat2",
+        "units": "%",
+        "icon": "",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "0",
+                "color": "#ea5353"
+            },
+            {
+                "from": "30",
+                "color": "#ffc800"
+            },
+            {
+                "from": "70",
+                "color": "#5cd65c"
+            }
+        ],
+        "min": 0,
+        "max": "100",
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": 8,
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 770,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "040618d62b1f987f",
+        "type": "ui-gauge",
+        "z": "df368d78799495ad",
+        "name": "BATT3",
+        "group": "a45a3fa2e13b5abd",
+        "order": 2,
+        "width": 3,
+        "height": 3,
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "Bat3",
+        "units": "%",
+        "icon": "",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "from": "0",
+                "color": "#ea5353"
+            },
+            {
+                "from": "30",
+                "color": "#ffc800"
+            },
+            {
+                "from": "70",
+                "color": "#5cd65c"
+            }
+        ],
+        "min": 0,
+        "max": "100",
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": 8,
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 770,
+        "y": 880,
+        "wires": []
+    }
+]
